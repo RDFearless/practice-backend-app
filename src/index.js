@@ -1,13 +1,33 @@
 import connectDB from "./db/index.js";
 import dotenv from "dotenv"
+import { app } from "./app.js"; 
+
 dotenv.config({
     path: "./env"
 })
 
+const port = process.env.PORT || 3000 || 3001 || 4000;
 
-// Approach 1 -> clean and modular approach
+// Approach 2 -> clean and modular approach
 
-connectDB() //  Connecting to DB
+connectDB() // returns a Promise
+
+.then(() => {
+    
+    // DB connected but server is not listening
+    app.on("error", (err) => {
+        console.log("DB connection succesful, but can't connect to express app !!", err);
+        throw err;
+    })
+    
+    app.listen(port, () => {
+        console.log(`Server is listening on port: ${port}`);
+    })
+})
+
+.catch((err) => {
+    console.log("MONGODB connection failed !!", err);
+}) 
 
 
 
@@ -23,8 +43,7 @@ connectDB() //  Connecting to DB
 
 
 
-
-// Approach 2 -> good but pollutes index.js
+// Approach 1 -> good but pollutes index.js
 
 /*
 const app = express();
