@@ -19,7 +19,6 @@ const uploadToCloudinary = async (localFilePath) => {
         })
 
         // Uploaded succesfully
-        console.log(`File uploaded on cloudinary ${uploadResult.url}`);
         return uploadResult;
         
     } 
@@ -31,7 +30,7 @@ const uploadToCloudinary = async (localFilePath) => {
     
     finally {
         // unlinking temporarily stored file
-        fs.unlink(localFilePath, (err) => {
+        fs.unlinkSync(localFilePath, (err) => {
             if (err) console.error("Failed to delete local file:", err);
         });
     }

@@ -3,20 +3,21 @@ import { ApiError } from "../utils/ApiError.js"
 import { uploadToCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { User } from "../models/user.model.js"
+import { log } from "console"
 
 const registerUser = asyncHandler( async (req, res) => {
     // 1. get all user info
-    const {fullName, email, username, password} = req.body
+    const {fullname, email, username, password} = req.body
     
     // 2. validation
     if(
-        [fullName, email, username, password].some((field) => field?.trim === "")
+        [fullname, email, username, password].some((field) => field?.trim === "")
     ) {
         throw new ApiError(400, "All fields are required");
     }
     
     // 3. user already exists - username, email
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or: [{ email }, { username }]
     })
     
@@ -26,7 +27,16 @@ const registerUser = asyncHandler( async (req, res) => {
     
     // 4. avatar and coverImage check
     const avatarLocalPath = req.files?.avatar[0]?.path
-    const coverImageLocalPath = req.files?.coverImage[0]?.path
+    
+    // cover image is not a required feild
+    let coverImageLocalPath;
+    if(
+        req.files && 
+        Array.isArray(req.files.coverImage) && 
+        req.files.coverImage.length > 0
+    ) {
+        coverImageLocalPath = req.files.coverImage[0].path;
+    }
     
     if(!avatarLocalPath) { // avatar is a required field
         throw new ApiError(400, "Avatar file is required");
@@ -44,13 +54,13 @@ const registerUser = asyncHandler( async (req, res) => {
     const user = await User.create({
         username: username.toLowerCase(),
         email,
-        fullName,
+        fullname,
         avatar: avatarUpload.url,
         coverImage: coverImageUpload?.url || "",
         password
     })
     
-    // 7. check user creation, rmv pass and refreshToken from res
+    // 7. check user creation, rmv pass and refreshToken from res(frontend)
     const createdUser = await User.findById(user._id).select(
         "-password -refreshToken" // un-selecting pass and rfrshTkn from response
     )
