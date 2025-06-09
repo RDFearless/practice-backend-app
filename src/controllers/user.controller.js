@@ -3,7 +3,22 @@ import { ApiError } from "../utils/ApiError.js"
 import { uploadToCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { User } from "../models/user.model.js"
-import { log } from "console"
+
+const generateAccessAndRefreshToken = async (userId) => {
+    try {
+        const user = await User.findById(userId);
+        
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+        
+        user.refreshToken = refreshToken;
+        await user.save({validateBeforeSave: false});
+        
+        return {accessToken, refreshToken};
+    } catch (error) {
+        throw new ApiError(500, `Something went wrong while generating access and refresh token: ${error}`)
+    }
+}
 
 const registerUser = asyncHandler( async (req, res) => {
     // 1. get all user info
@@ -11,7 +26,7 @@ const registerUser = asyncHandler( async (req, res) => {
     
     // 2. validation
     if(
-        [fullname, email, username, password].some((field) => field?.trim === "")
+        [fullname, email, username, password].some((field) => field?.trim() === "")
     ) {
         throw new ApiError(400, "All fields are required");
     }
@@ -53,7 +68,7 @@ const registerUser = asyncHandler( async (req, res) => {
     // 6. user entry to DB
     const user = await User.create({
         username: username.toLowerCase(),
-        email,
+        email: email.toLowerCase(),
         fullname,
         avatar: avatarUpload.url,
         coverImage: coverImageUpload?.url || "",
@@ -69,11 +84,59 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiError(500, "something went wrong while registering user to DB");
     }
     
-    // 8. return response
+    // 8. return response(frontend)
     return res.status(201).json(
-        new ApiResponse(200, createdUser, "User Registered Successfully")
+        new ApiResponse(201, createdUser, "User Registered Successfully")
     );
 })
 
+const loginUser = asyncHandler( async (req, res) => {
+    // 1. req body -> get all data
+    const {username, email, password} = req.body;
+    
+    // 2. check username or email
+    if(!username && !email) {
+        throw new ApiError(400, "Username or Email is empty");
+    }
+    
+    // 3. find the user
+    const user = await User.findOne({
+        $or: [{ username }, { email }]
+    });
+    if(!user) {
+        throw new ApiError(401, "Invalid user credentials");
+    }
+    
+    // 4. password validation
+    if(!password) {
+        throw new ApiError(400, "Password is empty")
+    }
+    const isPasswordValid = await user.isPasswordCorrect(password);
+    if(!isPasswordValid) {
+        throw new ApiError(401, "Invalid user credentials");
+    }
+    
+    // 5. generate access and refresh tokens
+    const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id);
+    
+    // return response - loggedUser body, cookies
+    const loggedUser = await User.findById(user._id).select("-password -refreshToken");
+    
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+    
+    return res
+    .status(201)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new ApiResponse(201, loggedUser, "user logged in successfully")
+    );
+})
 
-export { registerUser }
+export { 
+    registerUser, 
+    loginUser
+}
