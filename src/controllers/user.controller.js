@@ -217,9 +217,48 @@ const accessRefreshToken = asyncHandler( async (req, res) => {
     }
 });
 
+const changeCurrentPassword = asyncHandler( async (req, res) => {
+    const {username, oldPassword, newPassword} = req.body;
+    if(!username) {
+        throw new ApiError(400, "Username can't be empty");
+    }
+    if(!oldPassword && !newPassword) {
+        throw new ApiError(400, "old and new password are required");
+    }
+    
+    const user = await User.findById(req.user._id);
+    
+    if(!(user.username === username)) {
+        throw new ApiError(400, "Invalid Credentials");
+    }
+    
+    const isPasswordValid = await user.isPasswordCorrect(oldPassword);
+    if(!isPasswordValid) {
+        throw new ApiError(400, "Invalid Password");
+    }
+    
+    user.password = newPassword;
+    await user.save();
+    
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+    
+    return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(
+        new ApiResponse(200, {}, "Password Changed")
+    );
+});
+
 export { 
     registerUser, 
     loginUser,
     logoutUser,
-    accessRefreshToken
+    accessRefreshToken,
+    changeCurrentPassword,
+    getCurrentUser
 }
