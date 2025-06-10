@@ -119,7 +119,7 @@ const loginUser = asyncHandler( async (req, res) => {
     // 5. generate access and refresh tokens
     const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id);
     
-    // return response - loggedUser body, cookies
+    // 6. return response - loggedUser body, cookies
     const loggedUser = await User.findById(user._id).select("-password -refreshToken");
     
     const options = {
@@ -132,11 +132,43 @@ const loginUser = asyncHandler( async (req, res) => {
     .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, options)
     .json(
-        new ApiResponse(201, loggedUser, "user logged in successfully")
+        new ApiResponse( 
+            201, 
+            {
+                data: loggedUser, 
+                accessToken, 
+                refreshToken
+            }, 
+            "user logged in successfully"
+        )
     );
+})
+
+const logoutUser = asyncHandler( async (req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {refreshToken: undefined}
+        },
+        {
+            new: true
+        }
+    );
+    
+    const options = {
+        httpOnly: true,
+        secure: true
+    };
+    
+    return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "User Logged Out"));
 })
 
 export { 
     registerUser, 
-    loginUser
+    loginUser,
+    logoutUser
 }
