@@ -27,12 +27,12 @@ router.route("/change-password").patch(verifyJWT, changeCurrentPassword);
 router.route("/current-user").get(verifyJWT, getCurrentUser);
 router.route("/update-avatar").patch(
     verifyJWT, 
-    upload.single([{ name: "avatar", maxCount: 1 }]),
+    upload.single("avatar"),
     updateUserAvatar
 );
 router.route("/update-cover-image").patch(
     verifyJWT, 
-    upload.single([{ name: "coverImage", maxCount: 1 }]),
+    upload.single("coverImage"),
     updateUserCoverImage
 );
 router.route("/channel/:username").get(verifyJWT, getUserChannelProfile);
