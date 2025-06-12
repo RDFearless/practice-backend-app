@@ -284,6 +284,101 @@ const updateUserAvatar = asyncHandler( async (req, res) => {
     );
 });
 
+const updateUserCoverImage = asyncHandler( async (req, res) => {
+    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    if(!coverImageLocalPath) {
+        throw new ApiError(400, "Cover Image file missing");
+    }
+    
+    const coverImage = await uploadToCloudinary(coverImageLocalPath);
+    if(!coverImage) {
+        throw new ApiError(500, "Something went wrong while uploading Cover Image file to cloudinary");
+    }
+    
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        { $set: { coverImage: coverImage.url} }, // Update Cover Image in DB
+        { new: true }
+    );
+    
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Cover Image updated successfully")
+    );
+});
+
+const getUserChannelProfile = asyncHandler( async (req, res) => {
+    const { username } = req.query;
+    if(!username?.trim()) {
+        throw new ApiError(400, "username is missing");
+    }
+    
+    const channelProfile = await User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+        {
+            // to get number of 'subscribers' of my channel
+            $lookup: {
+                from: "subscriptions", // subscription.model
+                localField: "_id",
+                foreignField: "channel", 
+                as: "subscribers" // subscribers[] -> all the 'users' who are subscribers
+            }
+        },
+        {
+            // to get number of 'channels' I've subscribed to
+            $lookup: {
+                from: "subscriptions", // subscription.model
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo" // subscribedTo[] -> all the 'users' to whom I am subscribed to
+            }
+        },
+        {
+            $addFields: { // adds new fields in user model
+                subscribersCount: {
+                    $size: "$subscribers"
+                },
+                channelsSubscribedTo: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cond : {
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: { // optionally return required field from the new user model
+                username: 1,
+                email: 1,
+                fullname: 1,
+                avatar: 1,
+                coverImage: 1,
+                subscribersCount: 1,
+                channelsSubscribedTo: 1,
+                isSubscribed: 1
+            }
+        }
+    ])
+    if(!channelProfile?.length) {
+        throw new ApiError(404, "Channel does not exists");
+    }
+    
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, channelProfile[0], "User channel fetched")
+    );
+});
+
 export { 
     registerUser, 
     loginUser,
@@ -291,5 +386,7 @@ export {
     accessRefreshToken,
     changeCurrentPassword,
     getCurrentUser,
-    updateUserAvatar
+    updateUserAvatar,
+    updateUserCoverImage,
+    getUserChannelProfile
 }

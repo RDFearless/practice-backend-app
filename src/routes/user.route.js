@@ -1,5 +1,5 @@
 import express from "express"
-import { loginUser, registerUser, logoutUser, accessRefreshToken, changeCurrentPassword, getCurrentUser, updateUserAvatar } from "../controllers/user.controller.js"
+import { loginUser, registerUser, logoutUser, accessRefreshToken, changeCurrentPassword, getCurrentUser, updateUserAvatar, updateUserCoverImage, getUserChannelProfile } from "../controllers/user.controller.js"
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -30,6 +30,12 @@ router.route("/update-avatar").post(
     upload.fields([{ name: "avatar", maxCount: 1 }]),
     updateUserAvatar
 );
+router.route("/update-cover-image").post(
+    verifyJWT, 
+    upload.fields([{ name: "coverImage", maxCount: 1 }]),
+    updateUserCoverImage
+);
+router.route("/user-profile").get(verifyJWT, getUserChannelProfile);
 
 
 export default router
