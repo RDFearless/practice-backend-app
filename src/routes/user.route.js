@@ -23,19 +23,19 @@ router.route("/login").post(loginUser)
 // secured routes - user is logged in
 router.route("/logout").post(verifyJWT, logoutUser);
 router.route("/refresh-token").post(accessRefreshToken);
-router.route("/change-password").post(verifyJWT, changeCurrentPassword);
-router.route("/get-user").post(verifyJWT, getCurrentUser);
-router.route("/update-avatar").post(
+router.route("/change-password").patch(verifyJWT, changeCurrentPassword);
+router.route("/current-user").get(verifyJWT, getCurrentUser);
+router.route("/update-avatar").patch(
     verifyJWT, 
-    upload.fields([{ name: "avatar", maxCount: 1 }]),
+    upload.single([{ name: "avatar", maxCount: 1 }]),
     updateUserAvatar
 );
-router.route("/update-cover-image").post(
+router.route("/update-cover-image").patch(
     verifyJWT, 
-    upload.fields([{ name: "coverImage", maxCount: 1 }]),
+    upload.single([{ name: "coverImage", maxCount: 1 }]),
     updateUserCoverImage
 );
-router.route("/user-profile").get(verifyJWT, getUserChannelProfile);
+router.route("/channel/:username").get(verifyJWT, getUserChannelProfile);
 
 
 export default router

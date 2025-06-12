@@ -261,7 +261,7 @@ const getCurrentUser = asyncHandler( async (req, res) => {
 });
 
 const updateUserAvatar = asyncHandler( async (req, res) => {
-    const avatarLocalPath = req.files?.avatar[0]?.path;
+    const avatarLocalPath = req.file?.path;
     if(!avatarLocalPath) {
         throw new ApiError(400, "Avatar file missing");
     }
@@ -285,7 +285,7 @@ const updateUserAvatar = asyncHandler( async (req, res) => {
 });
 
 const updateUserCoverImage = asyncHandler( async (req, res) => {
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    const coverImageLocalPath = req.file?.path;
     if(!coverImageLocalPath) {
         throw new ApiError(400, "Cover Image file missing");
     }
@@ -309,7 +309,7 @@ const updateUserCoverImage = asyncHandler( async (req, res) => {
 });
 
 const getUserChannelProfile = asyncHandler( async (req, res) => {
-    const { username } = req.query;
+    const { username } = req.params;
     if(!username?.trim()) {
         throw new ApiError(400, "username is missing");
     }
