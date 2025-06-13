@@ -40,11 +40,18 @@ const getAllVideos = asyncHandler(async (req, res) => {
     const parsedPage = parseInt(page);
     const parsedLimit = parseInt(limit);
     
+    const customLabels = {
+        totalDocs: "totalVideos",
+        docs: "videos"
+    }
+    
     const options = {
         sort: sortOptions,
         page: parsedPage,
-        limit: parsedLimit
+        limit: parsedLimit,
+        customLabels: customLabels
     }
+    
     
     const allVideos = await Video.aggregatePaginate(videoAggregate, options);
     
