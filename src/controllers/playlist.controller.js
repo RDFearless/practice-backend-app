@@ -120,16 +120,21 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Video not found");
     }
     
-    const response = await Playlist.findByIdAndUpdate(
-        playlistId,
-        {
-            $push: {videos: videoId}
-        }, 
+    const updatedPlaylist = await Playlist.findByIdAndUpdate(
+        { _id: playlistId, owner: req.user._id },
+        { $push: { videos: videoId } }, 
         { new: true }
     );
     
-    if(!response) {
-        throw new ApiError(404, "Playlist not found");
+    if(!updatedPlaylist) {
+        // This could be either playlist not found or unauthorized
+        const playlist = await Playlist.findById(playlistId);
+        
+        if(!playlist) {
+            throw new ApiError(404, "Playlist not found");
+        } else {
+            throw new ApiError(401, "Unauthorized request");
+        }
     }
     
     return res
@@ -166,16 +171,21 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Video not found");
     }
     
-    const response = await Playlist.findByIdAndUpdate(
-        playlistId,
-        {
-            $pull: { videos: videoId }
-        }, 
+    const updatedPlaylist = await Playlist.findByIdAndUpdate(
+        { _id: playlistId, owner: req.user._id },
+        { $pull: { videos: videoId } }, 
         { new: true }
     );
     
-    if(!response) {
-        throw new ApiError(404, "Playlist not found");
+    if(!updatedPlaylist) {
+        // This could be either playlist not found or unauthorized
+        const playlist = await Playlist.findById(playlistId);
+        
+        if(!playlist) {
+            throw new ApiError(404, "Playlist not found");
+        } else {
+            throw new ApiError(401, "Unauthorized request");
+        }
     }
     
     return res
@@ -199,18 +209,24 @@ const deletePlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(400, "invalid playlistId");
     }
     
-    const deleteResponse = await Playlist.deleteOne({ _id: playlistId });
-    
-    if(deleteResponse.deletedCount === 0) {
+    const playlist = await Playlist.findById(playlistId);    
+    if (!playlist) {
         throw new ApiError(404, "Playlist not found");
     }
+    
+    // Verify ownership
+    if (playlist.owner.toString() != req.user._id.toString()) {
+        throw new ApiError(403, "Unauthorized request");
+    }
+    
+    await Playlist.deleteOne({ _id: playlistId });
     
     return res
     .status(200)
     .json(
         new ApiResponse(
             200,
-            { deleted: true },
+            { isDeleted: true },
             "Playlist deleted"
         )
     );
@@ -232,25 +248,20 @@ const updatePlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Playlist not found");
     }
     
-    // old status
-    var _name = playlist.name;
-    var _description = playlist.description;
-    var _isPrivate = playlist.isPrivate;
+    // Verify ownership
+    if(playlist.owner.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "Unauthorized request");
+    }
     
+    const updateData = {};    
     // updating with newer data if provided
-    if(name) _name = name;
-    if(description) _description = description;
-    if(isPrivate) _isPrivate = isPrivate;
+    if(name) updateData.name = name;
+    if(description) updateData.description = description;
     
-    await Playlist.findByIdAndUpdate(
+    const updatedPlaylist = await Playlist.findByIdAndUpdate(
         playlistId,
-        {
-            $set: {
-                name: _name,
-                description: _description,
-                isPrivate: _isPrivate,
-            }
-        }, { new: true }
+        { $set: updateData },
+        { new: true }
     );
     
     return res
@@ -258,7 +269,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     .json(
         new ApiResponse(
             200,
-            {},
+            updatedPlaylist,
             "Playlist updated"
         )
     );
